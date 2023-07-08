@@ -1,0 +1,34 @@
+﻿{
+  "inputRom": "",
+  "outputRom": "",
+  "addmusick": {
+    "exe": "tools\\addmusick\\AddmusicK.exe",
+    "args": "",
+    "listFile": ""
+  },
+  "gps": {
+    "exe": "tools\\gps\\gps.exe",
+    "args": "",
+    "listFile": "..\\..\\gps_list.txt"
+  },
+  "pixi": {
+    "exe": "tools\\pixi\\pixi.exe",
+    "args": "",
+    "listFile": "pixi_list.txt"
+  },
+  "uberasm": {
+    "exe": "tools\\uberasm\\uberasmtool.exe",
+    "args": "",
+    "listFile": "..\\..\\uberasm_list.txt"
+  },
+  "asar": {
+    "exe": "",
+    "args": "",
+    "patchFolder": "",
+    "asmFiles": [
+      "",
+      "",
+      ""
+    ]
+  }
+}
