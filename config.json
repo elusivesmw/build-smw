@@ -4,8 +4,7 @@
   "outputRom": "patched.smc",
   "addmusick": {
     "exe": "tools\\addmusick\\AddmusicK.exe",
-    "args": "",
-    "listFile": ""
+    "args": ""
   },
   "gps": {
     "exe": "tools\\gps\\gps.exe",

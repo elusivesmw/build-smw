@@ -25,6 +25,7 @@ class Program
         _absOutputRom = Path.Combine(_config.ProjectPath, _config.OutputRom);
 
         bool verbose = true;
+        await InsertMusic(verbose);
         await InsertSprites(verbose);
         await InsertUberAsm(verbose);
         await InsertBlocks(verbose);
@@ -43,6 +44,16 @@ class Program
 
         if (string.IsNullOrEmpty(config.ProjectPath)) config.ProjectPath = pwd;
         return config;
+    }
+
+    static async Task InsertMusic(bool verbose)
+    {
+        if (_config.Addmusick == null) return;
+        if (string.IsNullOrEmpty(_config.Addmusick.Exe)) return;
+
+        string exe = Path.Combine(_config.ProjectPath, _config.Addmusick.Exe);
+        string args = _config.Addmusick.Args + $" {_absInputRom}";
+        await RunExe(exe, args, verbose);
     }
 
 
