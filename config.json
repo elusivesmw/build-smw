@@ -1,6 +1,7 @@
 ﻿{
-  "inputRom": "",
-  "outputRom": "",
+  "projectPath": "",
+  "inputRom": "levels.smc",
+  "outputRom": "patched.smc",
   "addmusick": {
     "exe": "tools\\addmusick\\AddmusicK.exe",
     "args": "",
@@ -22,13 +23,14 @@
     "listFile": "..\\..\\uberasm_list.txt"
   },
   "asar": {
-    "exe": "",
-    "args": "",
-    "patchFolder": "",
+    "exe": "tools\\asar\\asar.exe",
+    "args": "--pause-mode=on-warning",
+    "patchFolder": "tools\\asar\\asm",
     "asmFiles": [
-      "",
-      "",
-      ""
+      "asarspritetiles.asm",
+      "ghb_ssp_fixes.asm",
+      "retry.asm",
+      "SuperStatusBar_Advancedv2.asm"
     ]
   }
 }

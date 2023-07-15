@@ -10,8 +10,9 @@ namespace build_smw;
 
 internal class Config
 {
-    public string? InputRom { get; set; }
-    public string? OutputRom { get; set; }
+    public string ProjectPath { get; set; } = string.Empty;
+    public string InputRom { get; set; } = string.Empty;
+    public string OutputRom { get; set; } = string.Empty;
     public ToolConfig? Addmusick { get; set; }
     public ToolConfig? Gps { get; set; }
     public ToolConfig? Pixi { get; set; }

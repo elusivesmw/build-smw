@@ -4,21 +4,31 @@ using System.Text.Json;
 
 class Program
 {
-    static string? projectPath;
+#nullable disable
+    static Config _config;
+#nullable enable
+    static string _absInputRom = string.Empty;
+    static string _absOutputRom = string.Empty;
+
     static async Task Main(string[] args)
     {
         var config = await LoadConfig();
         if (config == null) return;
+        _config = config;
 
-        projectPath = Path.GetDirectoryName(config.InputRom);
-        if (projectPath == null) return;
+        if (_config.ProjectPath == null) return;
 
-        await InsertSprites(config, false);
-        await InsertUberAsm(config, false);
-        await InsertBlocks(config, false);
+        if (_config.InputRom == null) return;
+        _absInputRom = Path.Combine(_config.ProjectPath, _config.InputRom);
 
+        if (_config.OutputRom == null) return;
+        _absOutputRom = Path.Combine(_config.ProjectPath, _config.OutputRom);
 
-        Console.WriteLine("Done.");
+        bool verbose = true;
+        await InsertSprites(verbose);
+        await InsertUberAsm(verbose);
+        await InsertBlocks(verbose);
+        await InsertPatches(verbose);
     }
 
 
@@ -29,54 +39,71 @@ class Program
         var fileContents = await File.ReadAllTextAsync(configFile);
         var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, AllowTrailingCommas = true };
         var config = JsonSerializer.Deserialize<Config>(fileContents, options);
+        if (config == null) return null;
+
+        if (string.IsNullOrEmpty(config.ProjectPath)) config.ProjectPath = pwd;
         return config;
     }
 
 
-    static async Task InsertBlocks(Config config, bool verbose)
+    static async Task InsertBlocks(bool verbose)
     {
-        Console.WriteLine("Inserting blocks...");
+        if (_config.Gps == null) return;
+        if (string.IsNullOrEmpty(_config.Gps.Exe) || string.IsNullOrEmpty(_config.Gps.ListFile)) return;
 
-        if (config.Gps == null) return;
-        if (string.IsNullOrEmpty(config.Gps.Exe) || string.IsNullOrEmpty(config.Gps.ListFile)) return;
-
-        string exe = Path.Combine(projectPath!, config.Gps.Exe);
-        string args = config.Gps.Args + $" -l {config.Gps.ListFile} {config.InputRom}";
+        string exe = Path.Combine(_config.ProjectPath, _config.Gps.Exe);
+        string args = _config.Gps.Args + $" -l {_config.Gps.ListFile} {_absInputRom}";
         await RunExe(exe, args, verbose);
-
-        Console.WriteLine("Blocks inserted...");
     }
 
-    static async Task InsertSprites(Config config, bool verbose)
+    static async Task InsertSprites(bool verbose)
     {
-        Console.WriteLine("Inserting sprites...");
-        
-        if (config.Pixi == null) return;
-        if (string.IsNullOrEmpty(config.Pixi.Exe) || string.IsNullOrEmpty(config.Pixi.ListFile)) return;
+        if (_config.Pixi == null) return;
+        if (string.IsNullOrEmpty(_config.Pixi.Exe) || string.IsNullOrEmpty(_config.Pixi.ListFile)) return;
 
-        string exe = Path.Combine(projectPath!, config.Pixi.Exe);
-        string args = config.Pixi.Args + (verbose ? " -d" : "") + $" -l {config.Pixi.ListFile} {config.InputRom}";
+        string exe = Path.Combine(_config.ProjectPath, _config.Pixi.Exe);
+        string args = _config.Pixi.Args + (verbose ? " -d" : "") + $" -l {_config.Pixi.ListFile} {_absInputRom}";
         await RunExe(exe, args, verbose);
-
-        Console.WriteLine("Sprites inserted...");
     }
 
-    static async Task InsertUberAsm(Config config, bool verbose)
+    static async Task InsertUberAsm(bool verbose)
     {
-        Console.WriteLine("Inserting UberASM...");
+        if (_config.Uberasm == null) return;
+        if (string.IsNullOrEmpty(_config.Uberasm.Exe) || string.IsNullOrEmpty(_config.Uberasm.ListFile)) return;
 
-        if (config.Uberasm == null) return;
-        if (string.IsNullOrEmpty(config.Uberasm.Exe) || string.IsNullOrEmpty(config.Uberasm.ListFile)) return;
+        string exe = Path.Combine(_config.ProjectPath, _config.Uberasm.Exe);
+        string args = _config.Uberasm.Args + $" {_config.Uberasm.ListFile} {_absInputRom}";
+        await RunExe(exe, args, false); // RedirectStandardOutput doesn't seem to work here
+    }
 
-        string exe = Path.Combine(projectPath!, config.Uberasm.Exe);
-        string args = config.Uberasm.Args + $" {config.Uberasm.ListFile} {config.InputRom}";
-        await RunExe(exe, args, verbose);
+    static async Task InsertPatches(bool verbose)
+    {
+        File.Copy(_absInputRom!, _absOutputRom!, true);
+        Console.WriteLine($"Copied from {_config.InputRom} to {_config.OutputRom}");
 
-        Console.WriteLine("UberASM inserted...");
+        if (_config.Asar == null) return;
+        if (string.IsNullOrEmpty(_config.Asar.Exe) || string.IsNullOrEmpty(_config.Asar.PatchFolder)) return;
+
+        string exe = Path.Combine(_config.ProjectPath!, _config.Asar.Exe);
+        string args = _config.Asar.Args;
+        args += (verbose ? " --verbose" : "");
+        string folder = _config.Asar.PatchFolder;
+        var patches = _config.Asar.AsmFiles;
+
+        foreach (var patch in patches)
+        {
+            string asmPath = Path.Combine(_config.ProjectPath, folder, patch);
+            // run patch inserts on copied rom only (output rom)
+            string cmd = $"{args} {asmPath} {_absOutputRom}";
+            await RunExe(exe, cmd, verbose);
+        }
     }
 
     static async Task RunExe(string exe, string args, bool verbose)
     {
+        Console.WriteLine("Running command:");
+        Console.WriteLine($"  {exe}{args}\n");
+
         var p = new Process();
         p.StartInfo.UseShellExecute = false;
         p.StartInfo.RedirectStandardOutput = verbose;
@@ -87,7 +114,7 @@ class Program
 
         if (verbose)
         {
-            Console.WriteLine(p.StandardOutput.ReadToEnd());
+            Console.WriteLine(await p.StandardOutput.ReadToEndAsync());
         }
         await p.WaitForExitAsync();
     }
