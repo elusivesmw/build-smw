@@ -53,9 +53,8 @@ class Program
 
         string exe = Path.Combine(_config.ProjectPath, _config.Addmusick.Exe);
         string args = _config.Addmusick.Args + $" {_absInputRom}";
-        await RunExe(exe, args, verbose);
+        await RunExe(exe, args);
     }
-
 
     static async Task InsertBlocks(bool verbose)
     {
@@ -64,7 +63,7 @@ class Program
 
         string exe = Path.Combine(_config.ProjectPath, _config.Gps.Exe);
         string args = _config.Gps.Args + $" -l {_config.Gps.ListFile} {_absInputRom}";
-        await RunExe(exe, args, verbose);
+        await RunExe(exe, args);
     }
 
     static async Task InsertSprites(bool verbose)
@@ -74,7 +73,7 @@ class Program
 
         string exe = Path.Combine(_config.ProjectPath, _config.Pixi.Exe);
         string args = _config.Pixi.Args + (verbose ? " -d" : "") + $" -l {_config.Pixi.ListFile} {_absInputRom}";
-        await RunExe(exe, args, verbose);
+        await RunExe(exe, args);
     }
 
     static async Task InsertUberAsm(bool verbose)
@@ -84,18 +83,18 @@ class Program
 
         string exe = Path.Combine(_config.ProjectPath, _config.Uberasm.Exe);
         string args = _config.Uberasm.Args + $" {_config.Uberasm.ListFile} {_absInputRom}";
-        await RunExe(exe, args, false); // RedirectStandardOutput doesn't seem to work here
+        await RunExe(exe, args, true);
     }
 
     static async Task InsertPatches(bool verbose)
     {
-        File.Copy(_absInputRom!, _absOutputRom!, true);
+        File.Copy(_absInputRom, _absOutputRom, true);
         Console.WriteLine($"Copied from {_config.InputRom} to {_config.OutputRom}");
 
         if (_config.Asar == null) return;
         if (string.IsNullOrEmpty(_config.Asar.Exe) || string.IsNullOrEmpty(_config.Asar.PatchFolder)) return;
 
-        string exe = Path.Combine(_config.ProjectPath!, _config.Asar.Exe);
+        string exe = Path.Combine(_config.ProjectPath, _config.Asar.Exe);
         string args = _config.Asar.Args;
         args += (verbose ? " --verbose" : "");
         string folder = _config.Asar.PatchFolder;
@@ -106,27 +105,40 @@ class Program
             string asmPath = Path.Combine(_config.ProjectPath, folder, patch);
             // run patch inserts on copied rom only (output rom)
             string cmd = $"{args} {asmPath} {_absOutputRom}";
-            await RunExe(exe, cmd, verbose);
+            await RunExe(exe, cmd);
         }
     }
 
-    static async Task RunExe(string exe, string args, bool verbose)
+    static async Task RunExe(string exe, string args, bool sendEnter = false)
     {
         Console.WriteLine("Running command:");
+        Console.ForegroundColor = ConsoleColor.Cyan;
         Console.WriteLine($"  {exe}{args}\n");
+        Console.ForegroundColor = ConsoleColor.DarkGray;
 
         var p = new Process();
         p.StartInfo.UseShellExecute = false;
-        p.StartInfo.RedirectStandardOutput = verbose;
+        p.StartInfo.RedirectStandardInput = sendEnter;
         p.StartInfo.FileName = exe;
         p.StartInfo.Arguments = args;
         p.StartInfo.WorkingDirectory = Path.GetDirectoryName(exe);
         p.Start();
 
-        if (verbose)
-        {
-            Console.WriteLine(await p.StandardOutput.ReadToEndAsync());
-        }
         await p.WaitForExitAsync();
+        Console.ResetColor();
+
+        if (sendEnter)
+        {
+            using (var sw = p.StandardInput)
+            {
+                if (!sw.BaseStream.CanWrite) return;
+                {
+                    // send enter to continue
+                    sw.WriteLine();
+                    // and add some space
+                    Console.WriteLine();
+                }
+            }
+        }
     }
 }
