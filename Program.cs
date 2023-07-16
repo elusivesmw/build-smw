@@ -24,12 +24,13 @@ class Program
         if (_config.OutputRom == null) return;
         _absOutputRom = Path.Combine(_config.ProjectPath, _config.OutputRom);
 
-        bool verbose = true;
-        await InsertMusic(verbose);
-        await InsertSprites(verbose);
-        await InsertUberAsm(verbose);
-        await InsertBlocks(verbose);
-        await InsertPatches(verbose);
+        var job = new BuildJob(args);
+        
+        if (job.InsertMusic) await InsertMusic(job.IsVerbose);
+        if (job.InsertSprites) await InsertSprites(job.IsVerbose);
+        if (job.InsertUberAsm) await InsertUberAsm(job.IsVerbose);
+        if (job.InsertBlocks) await InsertBlocks(job.IsVerbose);
+        if (job.InsertPatches) await InsertPatches(job.IsVerbose);
     }
 
 
