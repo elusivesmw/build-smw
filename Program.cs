@@ -10,6 +10,10 @@ class Program
     static string _absInputRom = string.Empty;
     static string _absOutputRom = string.Empty;
 
+    static Dictionary<string, DateTime> lastReadTimes;
+    static FileSystemWatcher uberasmWatcher;
+    const int FILE_WATCHER_DEBOUNCE = 500;
+
     static async Task Main(string[] args)
     {
         var config = await LoadConfig();
@@ -24,15 +28,50 @@ class Program
         if (_config.OutputRom == null) return;
         _absOutputRom = Path.Combine(_config.ProjectPath, _config.OutputRom);
 
+        // cache a debounce timer
+        lastReadTimes = new();
+
         var job = new BuildJob(args);
-        
+
         if (job.InsertMusic) await InsertMusic(job.IsVerbose);
         if (job.InsertSprites) await InsertSprites(job.IsVerbose);
         if (job.InsertUberAsm) await InsertUberAsm(job.IsVerbose);
         if (job.InsertBlocks) await InsertBlocks(job.IsVerbose);
         if (job.InsertPatches) await InsertPatches(job.IsVerbose);
+
+        // exit if not watching
+        if (!job.WatchForChanges) return;
+
+        uberasmWatcher = GetWatcher(_config.ProjectPath, _config.Uberasm.Exe, _config.Uberasm.ListFile);
+        uberasmWatcher.Changed += async (s, e) => await UberasmWatcher_Changed(s, e);
+
+        Console.WriteLine("Watching for changes...");
+        Console.WriteLine("Press enter to exit.");
+        Console.ReadLine();
     }
 
+    private static FileSystemWatcher GetWatcher(string projectPath, string exePath, string listPath)
+    {
+        var fileInfo = new FileInfo(Path.Combine(projectPath, Path.GetDirectoryName(exePath), listPath));
+        var watcher = new FileSystemWatcher(fileInfo.DirectoryName, fileInfo.Name);
+        watcher.EnableRaisingEvents = true;
+        return watcher;
+    }
+
+
+    private static async Task UberasmWatcher_Changed(object sender, FileSystemEventArgs e)
+    {
+        var lastWriteTime = File.GetLastWriteTime(e.FullPath);
+        DateTime lastReadTime;
+        lastReadTimes.TryGetValue(e.FullPath, out lastReadTime);
+        var diff = lastWriteTime - lastReadTime;
+        if (diff.TotalMilliseconds > FILE_WATCHER_DEBOUNCE)
+        {
+            Console.WriteLine($"{e.FullPath} has changed.");
+            lastReadTimes[e.FullPath] = lastWriteTime;
+            await InsertUberAsm(true);
+        }
+    }
 
     static async Task<Config?> LoadConfig()
     {
@@ -130,15 +169,13 @@ class Program
 
         if (sendEnter)
         {
-            using (var sw = p.StandardInput)
+            using var sw = p.StandardInput;
+            if (!sw.BaseStream.CanWrite) return;
             {
-                if (!sw.BaseStream.CanWrite) return;
-                {
-                    // send enter to continue
-                    sw.WriteLine();
-                    // and add some space
-                    Console.WriteLine();
-                }
+                // send enter to continue
+                sw.WriteLine();
+                // and add some space
+                Console.WriteLine();
             }
         }
     }
