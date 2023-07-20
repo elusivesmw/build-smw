@@ -11,7 +11,6 @@ class Program
     static string _absOutputRom = string.Empty;
 
     static Dictionary<string, DateTime> lastReadTimes;
-    static FileSystemWatcher uberasmWatcher;
     const int FILE_WATCHER_DEBOUNCE = 500;
 
     static async Task Main(string[] args)
@@ -42,24 +41,63 @@ class Program
         // exit if not watching
         if (!job.WatchForChanges) return;
 
-        uberasmWatcher = GetWatcher(_config.ProjectPath, _config.Uberasm.Exe, _config.Uberasm.ListFile);
-        uberasmWatcher.Changed += async (s, e) => await UberasmWatcher_Changed(s, e);
+        // init music watcher
+        if (job.InsertMusic && _config.Addmusick != null)
+        {
+            var fileInfo = new FileInfo(Path.Combine(_config.ProjectPath, Path.GetDirectoryName(_config.Addmusick.Exe), "Addmusic_list.txt"));
+            var musicWatcher = GetWatcher(fileInfo);
+            musicWatcher.Changed += async (s, e) =>
+            {
+                if (Watcher_DebounceChanged(e)) await InsertMusic(true);
+            };
+        }
+
+        // init sprite watcher
+        if (job.InsertSprites && _config.Pixi != null)
+        {
+            var fileInfo = new FileInfo(Path.Combine(_config.ProjectPath, _config.Pixi.ListFile));
+            var spriteWatcher = GetWatcher(fileInfo);
+            spriteWatcher.Changed += async (s, e) =>
+            {
+                if (Watcher_DebounceChanged(e)) await InsertSprites(true);
+            };
+        }
+
+        // init uberasm watcher
+        if (job.InsertUberAsm && _config.Uberasm != null)
+        {
+            var fileInfo = new FileInfo(Path.Combine(_config.ProjectPath, Path.GetDirectoryName(_config.Uberasm.Exe), _config.Uberasm.ListFile));
+            var uberasmWatcher = GetWatcher(fileInfo);
+            uberasmWatcher.Changed += async (s, e) =>
+            {
+                if (Watcher_DebounceChanged(e)) await InsertUberAsm(true);
+            };
+        }
+
+        // init gps watcher
+        if (job.InsertBlocks && _config.Gps != null)
+        {
+            var fileInfo = new FileInfo(Path.Combine(_config.ProjectPath, Path.GetDirectoryName(_config.Gps.Exe), _config.Gps.ListFile));
+            var gpsWatcher = GetWatcher(fileInfo);
+            gpsWatcher.Changed += async (s, e) =>
+            {
+                if (Watcher_DebounceChanged(e)) await InsertBlocks(true);
+            };
+        }
 
         Console.WriteLine("Watching for changes...");
         Console.WriteLine("Press enter to exit.");
         Console.ReadLine();
     }
 
-    private static FileSystemWatcher GetWatcher(string projectPath, string exePath, string listPath)
+    private static FileSystemWatcher GetWatcher(FileInfo fileInfo)
     {
-        var fileInfo = new FileInfo(Path.Combine(projectPath, Path.GetDirectoryName(exePath), listPath));
         var watcher = new FileSystemWatcher(fileInfo.DirectoryName, fileInfo.Name);
         watcher.EnableRaisingEvents = true;
         return watcher;
     }
 
-
-    private static async Task UberasmWatcher_Changed(object sender, FileSystemEventArgs e)
+    private static bool Watcher_DebounceChanged(FileSystemEventArgs e)
     {
         var lastWriteTime = File.GetLastWriteTime(e.FullPath);
         DateTime lastReadTime;
@@ -69,8 +107,9 @@ class Program
         {
             Console.WriteLine($"{e.FullPath} has changed.");
             lastReadTimes[e.FullPath] = lastWriteTime;
-            await InsertUberAsm(true);
+            return true;
         }
+        return false;
     }
 
     static async Task<Config?> LoadConfig()
