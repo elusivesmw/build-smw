@@ -30,26 +30,40 @@ class Program
         // init job from args
         var job = new BuildJob(args);
 
-        if (job.InsertMusic) await InsertMusic(job.IsVerbose);
-        if (job.InsertSprites) await InsertSprites(job.IsVerbose);
-        if (job.InsertUberAsm) await InsertUberAsm(job.IsVerbose);
-        if (job.InsertBlocks) await InsertBlocks(job.IsVerbose);
-        if (job.InsertPatches) await InsertPatches(job.IsVerbose);
-
-        // exit if not watching
-        if (!job.WatchForChanges) return;
+        // insert and exit if not watching
+        if (!job.WatchForChanges)
+        {
+            if (job.InsertMusic) await InsertMusic(job.IsVerbose);
+            if (job.InsertSprites) await InsertSprites(job.IsVerbose);
+            if (job.InsertUberAsm) await InsertUberAsm(job.IsVerbose);
+            if (job.InsertBlocks) await InsertBlocks(job.IsVerbose);
+            if (job.InsertPatches) await InsertPatches(job.IsVerbose);
+            return;
+        }
 
         // init watchers
         if (job.InsertMusic) InitAddmusickWatcher();
         if (job.InsertSprites) InitPixiWatcher();
         if (job.InsertUberAsm) InitUberasmWatcher();
         if (job.InsertBlocks) InitGpsWatcher();
+        InitRomWatcher();
 
         Console.WriteLine("Watching for changes...");
         Console.WriteLine("Press enter to exit.");
         Console.ReadLine();
     }
 
+    private static void InitRomWatcher()
+    {
+        var fileInfo = new FileInfo(_absInputRom);
+        if (fileInfo.DirectoryName == null) return;
+
+        var romWatcher = GetWatcher(fileInfo);
+        romWatcher.Changed += async (s, e) =>
+        {
+            if (Watcher_DebounceChanged(e)) await InsertPatches(true);
+        };
+    }
 
     private static void InitAddmusickWatcher()
     {
@@ -61,12 +75,14 @@ class Program
         var fileInfo = new FileInfo(Path.Combine(_config.ProjectPath, exeDir, _config.Addmusick.ListFile));
         if (fileInfo.DirectoryName == null) return;
 
-        var watcher = new FileSystemWatcher(fileInfo.DirectoryName, fileInfo.Name);
-        watcher.EnableRaisingEvents = true;
-
-        watcher.Changed += async (s, e) =>
+        var musicWatcher = GetWatcher(fileInfo);
+        musicWatcher.Changed += async (s, e) =>
         {
-            if (Watcher_DebounceChanged(e)) await InsertMusic(true);
+            if (Watcher_DebounceChanged(e))
+            {
+                await InsertMusic(true);
+                await InsertPatches(true);
+            }
         };
     }
 
@@ -80,7 +96,11 @@ class Program
         var spriteWatcher = GetWatcher(fileInfo);
         spriteWatcher.Changed += async (s, e) =>
         {
-            if (Watcher_DebounceChanged(e)) await InsertSprites(true);
+            if (Watcher_DebounceChanged(e))
+            {
+                await InsertSprites(true);
+                await InsertPatches(true);
+            }
         };
     }
 
@@ -97,7 +117,11 @@ class Program
         var uberasmWatcher = GetWatcher(fileInfo);
         uberasmWatcher.Changed += async (s, e) =>
         {
-            if (Watcher_DebounceChanged(e)) await InsertUberAsm(true);
+            if (Watcher_DebounceChanged(e))
+            {
+                await InsertUberAsm(true);
+                await InsertPatches(true);
+            }
         };
     }
 
@@ -114,7 +138,11 @@ class Program
         var gpsWatcher = GetWatcher(fileInfo);
         gpsWatcher.Changed += async (s, e) =>
         {
-            if (Watcher_DebounceChanged(e)) await InsertBlocks(true);
+            if (Watcher_DebounceChanged(e))
+            {
+                await InsertBlocks(true);
+                await InsertPatches(true);
+            }
         };
     }
 
