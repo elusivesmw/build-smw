@@ -15,6 +15,7 @@ internal class BuildJob
     public bool InsertBlocks { get; set; } = false;
     public bool InsertPatches { get; set; } = false;
     public bool IsVerbose { get; set; } = false;
+    public bool WatchForChanges { get; set; } = true;
 
     public BuildJob(string[] args)
     {
@@ -41,6 +42,9 @@ internal class BuildJob
                         break;
                     case "-v":
                         this.IsVerbose = true;
+                        break;
+                    case "-w":
+                        this.WatchForChanges = true;
                         break;
                     default:
                         Console.WriteLine($"Invalid arg: {arg}");
