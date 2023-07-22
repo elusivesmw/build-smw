@@ -16,6 +16,7 @@ internal class BuildJob
     public bool InsertPatches { get; set; } = false;
     public bool IsVerbose { get; set; } = false;
     public bool WatchForChanges { get; set; } = true;
+    public bool Run { get; set; } = true;
 
     public BuildJob(string[] args)
     {

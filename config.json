@@ -2,6 +2,10 @@
   "projectPath": "",
   "inputRom": "levels.smc",
   "outputRom": "patched.smc",
+  "emulator": {
+    "exe": "C:\\Users\\jay\\OneDrive\\Romhacking\\Emulators\\mesen\\mesen.exe",
+    "args": ""
+  },
   "addmusick": {
     "exe": "tools\\addmusick\\AddmusicK.exe",
     "args": ""
@@ -9,17 +13,17 @@
   "gps": {
     "exe": "tools\\gps\\gps.exe",
     "args": "",
-    "listFile": "..\\..\\gps_list.txt"
+    "listFile": "..\\..\\_list_gps.txt"
   },
   "pixi": {
     "exe": "tools\\pixi\\pixi.exe",
     "args": "",
-    "listFile": "pixi_list.txt"
+    "listFile": "_list_pixi.txt"
   },
   "uberasm": {
     "exe": "tools\\uberasm\\uberasmtool.exe",
     "args": "",
-    "listFile": "..\\..\\uberasm_list.txt"
+    "listFile": "..\\..\\_list_uberasm.txt"
   },
   "asar": {
     "exe": "tools\\asar\\asar.exe",

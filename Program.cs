@@ -6,6 +6,7 @@ class Program
 {
 #nullable disable
     static Config _config;
+    static FileSystemWatcher romWatcher;
 #nullable enable
     static string _absInputRom = string.Empty;
     static string _absOutputRom = string.Empty;
@@ -58,10 +59,14 @@ class Program
         var fileInfo = new FileInfo(_absInputRom);
         if (fileInfo.DirectoryName == null) return;
 
-        var romWatcher = GetWatcher(fileInfo);
+        romWatcher = GetWatcher(fileInfo);
         romWatcher.Changed += async (s, e) =>
         {
-            if (Watcher_DebounceChanged(e)) await InsertPatches(true);
+            if (Watcher_DebounceChanged(e))
+            {
+                await InsertPatches(true);
+                await RunEmulator();
+            }
         };
     }
 
@@ -82,6 +87,7 @@ class Program
             {
                 await InsertMusic(true);
                 await InsertPatches(true);
+                await RunEmulator();
             }
         };
     }
@@ -100,6 +106,7 @@ class Program
             {
                 await InsertSprites(true);
                 await InsertPatches(true);
+                await RunEmulator();
             }
         };
     }
@@ -121,6 +128,7 @@ class Program
             {
                 await InsertUberAsm(true);
                 await InsertPatches(true);
+                await RunEmulator();
             }
         };
     }
@@ -142,6 +150,7 @@ class Program
             {
                 await InsertBlocks(true);
                 await InsertPatches(true);
+                await RunEmulator();
             }
         };
     }
@@ -163,6 +172,9 @@ class Program
         {
             Console.WriteLine($"{e.FullPath} has changed.");
             lastReadTimes[e.FullPath] = lastWriteTime;
+
+            // also say rom has changed because it is about to change
+            lastReadTimes[_absOutputRom] = lastWriteTime;
             return true;
         }
         return false;
@@ -244,11 +256,24 @@ class Program
         }
     }
 
+    static async Task RunEmulator()
+    {
+        if (_config.Emulator == null) return;
+        if (string.IsNullOrEmpty(_config.Emulator.Exe)) return;
+
+        string args = _absOutputRom;
+        if (string.IsNullOrEmpty(_config.Emulator.Args)) args += $" {_config.Emulator.Args}";
+        await RunExe(_config.Emulator.Exe, args);
+    }
+
     static async Task RunExe(string exe, string args, bool sendEnter = false)
     {
+        // stop watching the rom we are about to modify
+        romWatcher.EnableRaisingEvents = false;
+
         Console.WriteLine("Running command:");
         Console.ForegroundColor = ConsoleColor.Cyan;
-        Console.WriteLine($"  {exe}{args}\n");
+        Console.WriteLine($"{exe} {args}\n");
         Console.ForegroundColor = ConsoleColor.DarkGray;
 
         var p = new Process();
@@ -273,5 +298,8 @@ class Program
                 Console.WriteLine();
             }
         }
+
+        // start watching the rom again
+        romWatcher.EnableRaisingEvents = true;
     }
 }
