@@ -1,25 +1,31 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Text.Json.Serialization;
-using System.Threading.Tasks;
-
-namespace build_smw;
+﻿namespace build_smw;
 
 internal class Config
 {
     public string ProjectPath { get; set; } = string.Empty;
     public string InputRom { get; set; } = string.Empty;
+    public string AbsInputRom
+    {
+        get
+        {
+            return Path.Combine(ProjectPath, InputRom);
+        }
+    }
     public string OutputRom { get; set; } = string.Empty;
+    public string AbsOutputRom
+    {
+        get
+        {
+            return Path.Combine(ProjectPath, OutputRom);
+        }
+    }
+
     public ToolConfig? Emulator { get; set; }
     public ToolConfig? Addmusick { get; set; }
     public ToolConfig? Gps { get; set; }
     public ToolConfig? Pixi { get; set; }
     public ToolConfig? Uberasm { get; set; }
     public AsarConfig? Asar { get; set; }
-
 }
 
 internal class ToolConfig
