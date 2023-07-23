@@ -49,9 +49,75 @@ class Program
         if (job.InsertBlocks) InitGpsWatcher();
         InitRomWatcher();
 
+        WriteWatchingMessage();
+        Console.ReadLine();
+    }
+
+    private static void WriteWatchingMessage()
+    {
         Console.WriteLine("Watching for changes...");
         Console.WriteLine("Press enter to exit.");
-        Console.ReadLine();
+    }
+    private static void WriteTime()
+    {
+        Console.WriteLine($"Finished running at {DateTime.Now:T}.");
+    }
+
+    #region Watchers
+    private static void InitAddmusickWatcher()
+    {
+        var musicWatcher = InitToolWatcher(_config.Addmusick);
+        if (musicWatcher == null) return;
+        musicWatcher.Changed += async (s, e) =>
+        {
+            if (Watcher_DebounceChanged(e))
+            {
+                await InsertMusic(true);
+                await CopyPatchRun();
+            }
+        };
+    }
+
+    private static void InitPixiWatcher()
+    {
+        var spriteWatcher = InitToolWatcher(_config.Pixi, false);
+        if (spriteWatcher == null) return;
+        spriteWatcher.Changed += async (s, e) =>
+        {
+            if (Watcher_DebounceChanged(e))
+            {
+                await InsertSprites(true);
+                await CopyPatchRun();
+            }
+        };
+    }
+
+    private static void InitGpsWatcher()
+    {
+        var gpsWatcher = InitToolWatcher(_config.Gps);
+        if (gpsWatcher == null) return;
+        gpsWatcher.Changed += async (s, e) =>
+        {
+            if (Watcher_DebounceChanged(e))
+            {
+                await InsertBlocks(true);
+                await CopyPatchRun();
+            }
+        };
+    }
+
+    private static void InitUberasmWatcher()
+    {
+        var uberasmWatcher = InitToolWatcher(_config.Uberasm);
+        if (uberasmWatcher == null) return;
+        uberasmWatcher.Changed += async (s, e) =>
+        {
+            if (Watcher_DebounceChanged(e))
+            {
+                await InsertUberAsm(true);
+                await CopyPatchRun();
+            }
+        };
     }
 
     private static void InitRomWatcher()
@@ -59,108 +125,49 @@ class Program
         var fileInfo = new FileInfo(_absInputRom);
         if (fileInfo.DirectoryName == null) return;
 
-        romWatcher = GetWatcher(fileInfo);
+        romWatcher = new FileSystemWatcher(fileInfo.DirectoryName, fileInfo.Name);
+        romWatcher.EnableRaisingEvents = true;
         romWatcher.Changed += async (s, e) =>
         {
             if (Watcher_DebounceChanged(e))
             {
-                await InsertPatches(true);
-                await RunEmulator();
+                await CopyPatchRun();
             }
         };
     }
 
-    private static void InitAddmusickWatcher()
+    private static FileSystemWatcher? InitToolWatcher(ToolConfig? tool, bool exeRelative = true)
     {
-        if (_config.Addmusick == null) return;
+        if (tool == null) return null;
 
-        string? exeDir = Path.GetDirectoryName(_config.Addmusick.Exe);
-        if (exeDir == null) return;
+        string? exeDir = Path.GetDirectoryName(tool.Exe);
+        if (exeDir == null) return null;
 
-        var fileInfo = new FileInfo(Path.Combine(_config.ProjectPath, exeDir, _config.Addmusick.ListFile));
-        if (fileInfo.DirectoryName == null) return;
-
-        var musicWatcher = GetWatcher(fileInfo);
-        musicWatcher.Changed += async (s, e) =>
+        FileInfo fileInfo;
+        if (exeRelative)
         {
-            if (Watcher_DebounceChanged(e))
-            {
-                await InsertMusic(true);
-                await InsertPatches(true);
-                await RunEmulator();
-            }
-        };
-    }
-
-    private static void InitPixiWatcher()
-    {
-        if (_config.Pixi == null) return;
-
-        var fileInfo = new FileInfo(Path.Combine(_config.ProjectPath, _config.Pixi.ListFile));
-        if (fileInfo.DirectoryName == null) return;
-
-        var spriteWatcher = GetWatcher(fileInfo);
-        spriteWatcher.Changed += async (s, e) =>
+            fileInfo = new FileInfo(Path.Combine(_config.ProjectPath, exeDir, tool.ListFile));
+        }
+        else
         {
-            if (Watcher_DebounceChanged(e))
-            {
-                await InsertSprites(true);
-                await InsertPatches(true);
-                await RunEmulator();
-            }
-        };
-    }
+            fileInfo = new FileInfo(Path.Combine(_config.ProjectPath, tool.ListFile));
+        }
+        if (fileInfo.DirectoryName == null) return null;
 
-    private static void InitUberasmWatcher()
-    {
-        if (_config.Uberasm == null) return;
-
-        string? exeDir = Path.GetDirectoryName(_config.Uberasm.Exe);
-        if (exeDir == null) return;
-
-        var fileInfo = new FileInfo(Path.Combine(_config.ProjectPath, exeDir, _config.Uberasm.ListFile));
-        if (fileInfo.DirectoryName == null) return;
-
-        var uberasmWatcher = GetWatcher(fileInfo);
-        uberasmWatcher.Changed += async (s, e) =>
-        {
-            if (Watcher_DebounceChanged(e))
-            {
-                await InsertUberAsm(true);
-                await InsertPatches(true);
-                await RunEmulator();
-            }
-        };
-    }
-
-    private static void InitGpsWatcher()
-    {
-        if (_config.Gps == null) return;
-
-        string? exeDir = Path.GetDirectoryName(_config.Gps.Exe);
-        if (exeDir == null) return;
-
-        var fileInfo = new FileInfo(Path.Combine(_config.ProjectPath, exeDir, _config.Gps.ListFile));
-        if (fileInfo.DirectoryName == null) return;
-
-        var gpsWatcher = GetWatcher(fileInfo);
-        gpsWatcher.Changed += async (s, e) =>
-        {
-            if (Watcher_DebounceChanged(e))
-            {
-                await InsertBlocks(true);
-                await InsertPatches(true);
-                await RunEmulator();
-            }
-        };
-    }
-
-    private static FileSystemWatcher GetWatcher(FileInfo fileInfo)
-    {
-        var watcher = new FileSystemWatcher(fileInfo.DirectoryName!, fileInfo.Name);
+        var watcher = new FileSystemWatcher(fileInfo.DirectoryName, fileInfo.Name);
         watcher.EnableRaisingEvents = true;
         return watcher;
     }
+    #endregion
+
+    private static async Task CopyPatchRun()
+    {
+        await InsertPatches(true);
+        await RunEmulator();
+        WriteTime();
+        WriteWatchingMessage();
+    }
+
 
     private static bool Watcher_DebounceChanged(FileSystemEventArgs e)
     {
@@ -174,7 +181,7 @@ class Program
             lastReadTimes[e.FullPath] = lastWriteTime;
 
             // also say rom has changed because it is about to change
-            lastReadTimes[_absOutputRom] = lastWriteTime;
+            lastReadTimes[_absInputRom] = lastWriteTime;
             return true;
         }
         return false;
