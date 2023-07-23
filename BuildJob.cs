@@ -126,7 +126,7 @@ internal class BuildJob
     private async Task CopyPatchRun()
     {
         await InsertPatches(true);
-        await RunEmulator();
+        RunEmulator();
         WriteTime();
         WriteWatchingMessage();
     }
@@ -184,7 +184,7 @@ internal class BuildJob
 
         string exe = Path.Combine(_config.ProjectPath, _config.Addmusick.Exe);
         string args = _config.Addmusick.Args + $" {_config.AbsInputRom}";
-        await RunExe(exe, args);
+        await RunExeAsync(exe, args);
     }
 
     private async Task InsertBlocks(bool verbose)
@@ -194,7 +194,7 @@ internal class BuildJob
 
         string exe = Path.Combine(_config.ProjectPath, _config.Gps.Exe);
         string args = _config.Gps.Args + $" -l {_config.Gps.ListFile} {_config.AbsInputRom}";
-        await RunExe(exe, args);
+        await RunExeAsync(exe, args);
     }
 
     private async Task InsertSprites(bool verbose)
@@ -204,7 +204,7 @@ internal class BuildJob
 
         string exe = Path.Combine(_config.ProjectPath, _config.Pixi.Exe);
         string args = _config.Pixi.Args + (verbose ? " -d" : "") + $" -l {_config.Pixi.ListFile} {_config.AbsInputRom}";
-        await RunExe(exe, args);
+        await RunExeAsync(exe, args);
     }
 
     private async Task InsertUberAsm(bool verbose)
@@ -214,7 +214,7 @@ internal class BuildJob
 
         string exe = Path.Combine(_config.ProjectPath, _config.Uberasm.Exe);
         string args = _config.Uberasm.Args + $" {_config.Uberasm.ListFile} {_config.AbsInputRom}";
-        await RunExe(exe, args, true);
+        await RunExeAsync(exe, args, true);
     }
 
     private async Task InsertPatches(bool verbose)
@@ -236,36 +236,42 @@ internal class BuildJob
             string asmPath = Path.Combine(_config.ProjectPath, folder, patch);
             // run patch inserts on copied rom only (output rom)
             string cmd = $"{args} {asmPath} {_config.AbsOutputRom}";
-            await RunExe(exe, cmd);
+            await RunExeAsync(exe, cmd);
         }
     }
 
-    private async Task RunEmulator()
+    private void RunEmulator()
     {
         if (_config.Emulator == null) return;
         if (string.IsNullOrEmpty(_config.Emulator.Exe)) return;
 
         string args = _config.AbsOutputRom;
         if (string.IsNullOrEmpty(_config.Emulator.Args)) args += $" {_config.Emulator.Args}";
-        await RunExe(_config.Emulator.Exe, args);
+
+        RunExe(_config.Emulator.Exe, args);
     }
 
-    private async Task RunExe(string exe, string args, bool sendEnter = false)
+    private void RunExe(string exe, string args)
     {
         // stop watching the rom we are about to modify
         EnableRomWatcherEvents(false);
+        WriteCommand(exe, args);
 
-        Console.WriteLine("Running command:");
-        Console.ForegroundColor = ConsoleColor.Cyan;
-        Console.WriteLine($"{exe} {args}\n");
-        Console.ForegroundColor = ConsoleColor.DarkGray;
+        var p = CreateProcess(exe, args, false);
+        p.Start();
 
-        var p = new Process();
-        p.StartInfo.UseShellExecute = false;
-        p.StartInfo.RedirectStandardInput = sendEnter;
-        p.StartInfo.FileName = exe;
-        p.StartInfo.Arguments = args;
-        p.StartInfo.WorkingDirectory = Path.GetDirectoryName(exe);
+        Console.ResetColor();
+        // start watching the rom again
+        EnableRomWatcherEvents(true);
+    }
+
+    private async Task RunExeAsync(string exe, string args, bool sendEnter = false)
+    {
+        // stop watching the rom we are about to modify
+        EnableRomWatcherEvents(false);
+        WriteCommand(exe, args);
+
+        var p = CreateProcess(exe, args, sendEnter);
         p.Start();
 
         await p.WaitForExitAsync();
@@ -287,6 +293,17 @@ internal class BuildJob
         EnableRomWatcherEvents(true);
     }
 
+    private Process CreateProcess(string exe, string args, bool redirectSti)
+    {
+        var p = new Process();
+        p.StartInfo.UseShellExecute = false;
+        p.StartInfo.RedirectStandardInput = redirectSti;
+        p.StartInfo.FileName = exe;
+        p.StartInfo.Arguments = args;
+        p.StartInfo.WorkingDirectory = Path.GetDirectoryName(exe);
+        return p;
+    }
+
     private void EnableRomWatcherEvents(bool enable)
     {
         if (romWatcher == null) return;
@@ -295,11 +312,20 @@ internal class BuildJob
     #endregion
 
     #region Messages
+    private void WriteCommand(string exe, string args)
+    {
+        Console.WriteLine("Running command:");
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.WriteLine($"{exe} {args}\n");
+        Console.ForegroundColor = ConsoleColor.DarkGray;
+    }
+
     private void WriteWatchingMessage()
     {
         Console.WriteLine("Watching for changes...");
         Console.WriteLine("Press enter to exit.");
     }
+
     private static void WriteTime()
     {
         Console.WriteLine($"Finished running at {DateTime.Now:T}.");
