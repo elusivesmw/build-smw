@@ -11,37 +11,37 @@ namespace build_smw;
 internal class BuildJob
 {
     private Config _config;
-    private BuildArgs _args;
+    private Options _options;
 
     private Dictionary<string, DateTime> _lastReadTimes = new();
     const int FILE_WATCHER_DEBOUNCE = 500;
 
     private FileSystemWatcher? romWatcher;
 
-    public BuildJob(Config config, BuildArgs args)
+    public BuildJob(Config config, Options options)
     {
         _config = config;
-        _args = args;
+        _options = options;
     }
 
     public async Task RunJob()
     {
         // insert and exit if not watching
-        if (!_args.WatchForChanges)
+        if (!_options.WatchForChanges)
         {
-            if (_args.InsertMusic) await InsertMusic(_args.IsVerbose);
-            if (_args.InsertSprites) await InsertSprites(_args.IsVerbose);
-            if (_args.InsertBlocks) await InsertBlocks(_args.IsVerbose);
-            if (_args.InsertUberAsm) await InsertUberAsm(_args.IsVerbose);
-            if (_args.InsertPatches) await InsertPatches(_args.IsVerbose);
+            if (_options.InsertMusic) await InsertMusic(_options.IsVerbose);
+            if (_options.InsertSprites) await InsertSprites(_options.IsVerbose);
+            if (_options.InsertBlocks) await InsertBlocks(_options.IsVerbose);
+            if (_options.InsertUberAsm) await InsertUberAsm(_options.IsVerbose);
+            if (_options.InsertPatches) await InsertPatches(_options.IsVerbose);
             return;
         }
 
         // init watchers
-        if (_args.InsertMusic) InitAddmusickWatcher();
-        if (_args.InsertSprites) InitPixiWatcher();
-        if (_args.InsertBlocks) InitGpsWatcher();
-        if (_args.InsertUberAsm) InitUberasmWatcher();
+        if (_options.InsertMusic) InitAddmusickWatcher();
+        if (_options.InsertSprites) InitPixiWatcher();
+        if (_options.InsertBlocks) InitGpsWatcher();
+        if (_options.InsertUberAsm) InitUberasmWatcher();
         InitRomWatcher();
 
         WriteWatchingMessage();
@@ -126,7 +126,7 @@ internal class BuildJob
     private async Task CopyPatchRun()
     {
         await InsertPatches(true);
-        RunEmulator();
+        if (_options.RunEmulator) RunEmulator();
         WriteTime();
         WriteWatchingMessage();
     }
@@ -246,7 +246,7 @@ internal class BuildJob
         if (string.IsNullOrEmpty(_config.Emulator.Exe)) return;
 
         string args = _config.AbsOutputRom;
-        if (string.IsNullOrEmpty(_config.Emulator.Args)) args += $" {_config.Emulator.Args}";
+        if (!string.IsNullOrEmpty(_config.Emulator.Args)) args += $" {_config.Emulator.Args}";
 
         RunExe(_config.Emulator.Exe, args);
     }

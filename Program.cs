@@ -1,4 +1,5 @@
 ﻿using build_smw;
+using CommandLine;
 using System.Text.Json;
 
 class Program
@@ -8,7 +9,9 @@ class Program
         var buildConfig = await LoadConfig();
         if (buildConfig == null) return;
 
-        var buildArgs = new BuildArgs(args);
+        var argsResult = Parser.Default.ParseArguments<Options>(args);
+        var buildArgs = argsResult.Value;
+        if (buildArgs == null) return;
 
         // init job from args
         var job = new BuildJob(buildConfig, buildArgs);
