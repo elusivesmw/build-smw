@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -42,6 +43,7 @@ internal class BuildJob
         if (_options.InsertSprites) InitPixiWatcher();
         if (_options.InsertBlocks) InitGpsWatcher();
         if (_options.InsertUberAsm) InitUberasmWatcher();
+        if (_options.InsertPatches) InitAsarWatcher();
         InitRomWatcher();
 
         WriteWatchingMessage();
@@ -107,6 +109,19 @@ internal class BuildJob
         };
     }
 
+    private void InitAsarWatcher()
+    {
+        var asarWatcher = InitToolWatcher(_config.Asar);
+        if (asarWatcher == null) return;
+        asarWatcher.Changed += async (s, e) =>
+        {
+            if (Watcher_DebounceChanged(e))
+            {
+                await CopyPatchRun();
+            }
+        };
+    }
+
     private void InitRomWatcher()
     {
         var fileInfo = new FileInfo(_config.AbsInputRom);
@@ -125,7 +140,7 @@ internal class BuildJob
 
     private async Task CopyPatchRun()
     {
-        await InsertPatches(true);
+        if (_options.InsertPatches) await InsertPatches(true);
         if (_options.RunEmulator) RunEmulator();
         WriteTime();
         WriteWatchingMessage();
@@ -223,20 +238,44 @@ internal class BuildJob
         Console.WriteLine($"Copied from {_config.InputRom} to {_config.OutputRom}");
 
         if (_config.Asar == null) return;
-        if (string.IsNullOrEmpty(_config.Asar.Exe) || string.IsNullOrEmpty(_config.Asar.PatchFolder)) return;
+        if (string.IsNullOrEmpty(_config.Asar.Exe) || string.IsNullOrEmpty(_config.Asar.ListFile)) return;
 
         string exe = Path.Combine(_config.ProjectPath, _config.Asar.Exe);
         string args = _config.Asar.Args;
         args += (verbose ? " --verbose" : "");
-        string folder = _config.Asar.PatchFolder;
-        var patches = _config.Asar.AsmFiles;
+
+        string? exeDir = Path.GetDirectoryName(exe);
+        if (exeDir == null) return;
+
+        var list = Path.Combine(exeDir, _config.Asar.ListFile);
+        var patches = ReadAllLines(list);
 
         foreach (var patch in patches)
         {
-            string asmPath = Path.Combine(_config.ProjectPath, folder, patch);
+            if (string.IsNullOrWhiteSpace(patch)) continue;
+
+            string asmPath = Path.Combine(exeDir, patch);
             // run patch inserts on copied rom only (output rom)
             string cmd = $"{args} {asmPath} {_config.AbsOutputRom}";
             await RunExeAsync(exe, cmd);
+        }
+    }
+
+    private string[] ReadAllLines(string path)
+    {
+        // allow read/write in other filestreams, which is not the case with System.IO.File.ReadAllLines
+        using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+        using (var sr = new StreamReader(fs))
+        {
+            var lines = new List<string>();
+            while (!sr.EndOfStream)
+            {
+                string? line = sr.ReadLine();
+                if (line == null) continue;
+
+                lines.Add(line);
+            }
+            return lines.ToArray();
         }
     }
 

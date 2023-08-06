@@ -25,7 +25,7 @@ internal class Config
     public ToolConfig? Gps { get; set; }
     public ToolConfig? Pixi { get; set; }
     public ToolConfig? Uberasm { get; set; }
-    public AsarConfig? Asar { get; set; }
+    public ToolConfig? Asar { get; set; }
 }
 
 internal class ToolConfig
@@ -33,12 +33,4 @@ internal class ToolConfig
     public string Exe { get; set; } = string.Empty;
     public string Args { get; set; } = string.Empty;
     public string ListFile { get; set; } = string.Empty;
-}
-
-internal class AsarConfig
-{
-    public string Exe { get; set; } = string.Empty;
-    public string Args { get; set; } = string.Empty;
-    public string PatchFolder { get; set; } = string.Empty;
-    public List<string> AsmFiles { get; set; } = new();
 }

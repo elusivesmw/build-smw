@@ -28,12 +28,6 @@
   "asar": {
     "exe": "tools\\asar\\asar.exe",
     "args": "--pause-mode=on-warning",
-    "patchFolder": "tools\\asar\\asm",
-    "asmFiles": [
-      "asarspritetiles.asm",
-      "ghb_ssp_fixes.asm",
-      "retry.asm",
-      "SuperStatusBar_Advancedv2.asm"
-    ]
+    "listFile": "..\\..\\_list_asar.txt"
   }
 }
