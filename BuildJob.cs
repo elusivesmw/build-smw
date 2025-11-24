@@ -33,8 +33,7 @@ internal class BuildJob
             if (_options.InsertMusic) await InsertMusic(_options.IsVerbose);
             if (_options.InsertSprites) await InsertSprites(_options.IsVerbose);
             if (_options.InsertBlocks) await InsertBlocks(_options.IsVerbose);
-            if (_options.InsertUberAsm) await InsertUberAsm(_options.IsVerbose);
-            if (_options.InsertPatches) await InsertPatches(_options.IsVerbose);
+            await CopyPatchRun();
             return;
         }
 
@@ -49,8 +48,6 @@ internal class BuildJob
         WriteWatchingMessage();
         Console.ReadLine();
     }
-
-
 
     #region Watchers
     private void InitAddmusickWatcher()
@@ -103,7 +100,6 @@ internal class BuildJob
         {
             if (Watcher_DebounceChanged(e))
             {
-                await InsertUberAsm(true);
                 await CopyPatchRun();
             }
         };
@@ -140,6 +136,9 @@ internal class BuildJob
 
     private async Task CopyPatchRun()
     {
+        CopyRom();
+        // run post copy tasks on output rom
+        if (_options.InsertUberAsm) await InsertUberAsm(_options.IsVerbose);
         if (_options.InsertPatches) await InsertPatches(true);
         if (_options.RunEmulator) RunEmulator();
         WriteTime();
@@ -222,21 +221,24 @@ internal class BuildJob
         await RunExeAsync(exe, args);
     }
 
+    private void CopyRom()
+    {
+        File.Copy(_config.AbsInputRom, _config.AbsOutputRom, true);
+        Console.WriteLine($"Copied from {_config.InputRom} to {_config.OutputRom}");
+    }
+
     private async Task InsertUberAsm(bool verbose)
     {
         if (_config.Uberasm == null) return;
         if (string.IsNullOrEmpty(_config.Uberasm.Exe) || string.IsNullOrEmpty(_config.Uberasm.ListFile)) return;
 
         string exe = Path.Combine(_config.ProjectPath, _config.Uberasm.Exe);
-        string args = _config.Uberasm.Args + $" {_config.Uberasm.ListFile} {_config.AbsInputRom}";
+        string args = _config.Uberasm.Args + $" {_config.Uberasm.ListFile} {_config.AbsOutputRom}";
         await RunExeAsync(exe, args, true);
     }
 
     private async Task InsertPatches(bool verbose)
     {
-        File.Copy(_config.AbsInputRom, _config.AbsOutputRom, true);
-        Console.WriteLine($"Copied from {_config.InputRom} to {_config.OutputRom}");
-
         if (_config.Asar == null) return;
         if (string.IsNullOrEmpty(_config.Asar.Exe) || string.IsNullOrEmpty(_config.Asar.ListFile)) return;
 
