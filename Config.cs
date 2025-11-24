@@ -26,6 +26,7 @@ internal class Config
     public ToolConfig? Pixi { get; set; }
     public ToolConfig? Uberasm { get; set; }
     public ToolConfig? Asar { get; set; }
+    public ToolConfig? Flips { get; set; }
 }
 
 internal class ToolConfig

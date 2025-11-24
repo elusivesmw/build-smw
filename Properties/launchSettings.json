@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "Run all, watch": {
+      "commandName": "Project",
+      "commandLineArgs": "-msbup -w -r"
+    },
+    "Run blocks, patches": {
+      "commandName": "Project",
+      "commandLineArgs": "-bp -r"
+    }
+  }
+}

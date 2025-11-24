@@ -33,7 +33,8 @@ internal class BuildJob
             if (_options.InsertMusic) await InsertMusic(_options.IsVerbose);
             if (_options.InsertSprites) await InsertSprites(_options.IsVerbose);
             if (_options.InsertBlocks) await InsertBlocks(_options.IsVerbose);
-            await CopyPatchRun();
+            if (_options.CreatePatch) await CreatePatch();
+            await CopyHijackRun();
             return;
         }
 
@@ -42,7 +43,7 @@ internal class BuildJob
         if (_options.InsertSprites) InitPixiWatcher();
         if (_options.InsertBlocks) InitGpsWatcher();
         if (_options.InsertUberAsm) InitUberasmWatcher();
-        if (_options.InsertPatches) InitAsarWatcher();
+        if (_options.InsertHijacks) InitAsarWatcher();
         InitRomWatcher();
 
         WriteWatchingMessage();
@@ -59,7 +60,7 @@ internal class BuildJob
             if (Watcher_DebounceChanged(e))
             {
                 await InsertMusic(true);
-                await CopyPatchRun();
+                await CopyHijackRun();
             }
         };
     }
@@ -73,7 +74,7 @@ internal class BuildJob
             if (Watcher_DebounceChanged(e))
             {
                 await InsertSprites(true);
-                await CopyPatchRun();
+                await CopyHijackRun();
             }
         };
     }
@@ -87,7 +88,7 @@ internal class BuildJob
             if (Watcher_DebounceChanged(e))
             {
                 await InsertBlocks(true);
-                await CopyPatchRun();
+                await CopyHijackRun();
             }
         };
     }
@@ -100,7 +101,7 @@ internal class BuildJob
         {
             if (Watcher_DebounceChanged(e))
             {
-                await CopyPatchRun();
+                await CopyHijackRun();
             }
         };
     }
@@ -113,7 +114,7 @@ internal class BuildJob
         {
             if (Watcher_DebounceChanged(e))
             {
-                await CopyPatchRun();
+                await CopyHijackRun();
             }
         };
     }
@@ -129,17 +130,18 @@ internal class BuildJob
         {
             if (Watcher_DebounceChanged(e))
             {
-                await CopyPatchRun();
+                if (_options.CreatePatch) await CreatePatch();
+                await CopyHijackRun();
             }
         };
     }
 
-    private async Task CopyPatchRun()
+    private async Task CopyHijackRun()
     {
         CopyRom();
         // run post copy tasks on output rom
         if (_options.InsertUberAsm) await InsertUberAsm(_options.IsVerbose);
-        if (_options.InsertPatches) await InsertPatches(true);
+        if (_options.InsertHijacks) await InsertHijacks(true);
         if (_options.RunEmulator) RunEmulator();
         WriteTime();
         WriteWatchingMessage();
@@ -221,6 +223,16 @@ internal class BuildJob
         await RunExeAsync(exe, args);
     }
 
+    private async Task CreatePatch()
+    {
+        if (_config.Flips == null) return;
+        if (string.IsNullOrEmpty(_config.Flips.Exe)) return;
+
+        string exe = Path.Combine(_config.ProjectPath, _config.Flips.Exe);
+        string args = _config.Flips.Args + $" --create sysLMRestore\\smwOrig.smc {_config.AbsInputRom} levels_diff.bps";
+        await RunExeAsync(exe, args);
+    }
+
     private void CopyRom()
     {
         File.Copy(_config.AbsInputRom, _config.AbsOutputRom, true);
@@ -237,7 +249,7 @@ internal class BuildJob
         await RunExeAsync(exe, args, true);
     }
 
-    private async Task InsertPatches(bool verbose)
+    private async Task InsertHijacks(bool verbose)
     {
         if (_config.Asar == null) return;
         if (string.IsNullOrEmpty(_config.Asar.Exe) || string.IsNullOrEmpty(_config.Asar.ListFile)) return;

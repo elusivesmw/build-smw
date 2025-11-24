@@ -16,8 +16,11 @@ internal class Options
     [Option('u', "uberasm", HelpText = "Insert Uberasm.")]
     public bool InsertUberAsm { get; set; } = false;
 
-    [Option('p', "patches", HelpText = "Insert global patches.")]
-    public bool InsertPatches { get; set; } = false;
+    [Option('h', "hijacks", HelpText = "Insert global hijacks.")]
+    public bool InsertHijacks { get; set; } = false;
+
+    [Option('p', "patch", HelpText = "Create patch file.")]
+    public bool CreatePatch { get; set; } = false;
 
     [Option('v', "verbose", HelpText = "Sets verbosity to true.")]
     public bool IsVerbose { get; set; } = false;

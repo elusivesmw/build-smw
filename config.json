@@ -29,5 +29,9 @@
     "exe": "tools\\asar\\asar.exe",
     "args": "--pause-mode=on-warning",
     "listFile": "..\\..\\_list_asar.txt"
+  },
+  "flips": {
+    "exe": "tools\\flips\\flips.exe",
+    "args": ""
   }
 }
