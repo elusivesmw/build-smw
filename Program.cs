@@ -1,10 +1,11 @@
-﻿using build_smw;
-using CommandLine;
+﻿using CommandLine;
 using System.Text.Json;
 
-class Program
+namespace build_smw;
+
+public class Program
 {
-    static async Task Main(string[] args)
+    public static async Task Main(string[] args)
     {
         var buildConfig = await LoadConfig();
         if (buildConfig == null) return;
@@ -18,12 +19,12 @@ class Program
         await job.RunJob();
     }
 
-    static async Task<Config?> LoadConfig()
+    private static readonly JsonSerializerOptions options = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, AllowTrailingCommas = true };
+    private static async Task<Config?> LoadConfig()
     {
         var pwd = Environment.CurrentDirectory;
         var configFile = Path.Combine(pwd, "config.json");
         var fileContents = await File.ReadAllTextAsync(configFile);
-        var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, AllowTrailingCommas = true };
         var config = JsonSerializer.Deserialize<Config>(fileContents, options);
         if (config == null) return null;
 

@@ -11,28 +11,28 @@ namespace build_smw;
 
 internal class BuildJob
 {
-    private Config _config;
-    private Options _options;
+    private readonly Config _config;
+    private readonly Options _options;
 
-    private Dictionary<string, DateTime> _lastReadTimes = new();
+    private readonly Dictionary<string, DateTime> _lastReadTimes = []; 
     const int FILE_WATCHER_DEBOUNCE = 500;
 
-    private FileSystemWatcher? romWatcher;
+    private FileSystemWatcher? _romWatcher;
 
-    public BuildJob(Config config, Options options)
+    internal BuildJob(Config config, Options options)
     {
         _config = config;
         _options = options;
     }
 
-    public async Task RunJob()
+    internal async Task RunJob()
     {
         // insert and exit if not watching
         if (!_options.WatchForChanges)
         {
             if (_options.InsertMusic)
             {
-                var success = await InsertMusic(_options.IsVerbose);
+                var success = await InsertMusic();
                 if (!success) Environment.Exit(1);
             }
             if (_options.InsertSprites)
@@ -42,7 +42,7 @@ internal class BuildJob
             }
             if (_options.InsertBlocks)
             {
-                var success = await InsertBlocks(_options.IsVerbose);
+                var success = await InsertBlocks();
                 if (!success) Environment.Exit(1);
             }
             if (_options.CreatePatch)
@@ -81,7 +81,7 @@ internal class BuildJob
         {
             if (Watcher_DebounceChanged(e))
             {
-                await InsertMusic(true);
+                await InsertMusic();
                 await CopyHijackRun();
             }
         };
@@ -109,7 +109,7 @@ internal class BuildJob
         {
             if (Watcher_DebounceChanged(e))
             {
-                await InsertBlocks(true);
+                await InsertBlocks();
                 await CopyHijackRun();
             }
         };
@@ -146,9 +146,9 @@ internal class BuildJob
         var fileInfo = new FileInfo(_config.AbsInputRom);
         if (fileInfo.DirectoryName == null) return;
 
-        romWatcher = new FileSystemWatcher(fileInfo.DirectoryName, fileInfo.Name);
-        romWatcher.EnableRaisingEvents = true;
-        romWatcher.Changed += async (s, e) =>
+        _romWatcher = new FileSystemWatcher(fileInfo.DirectoryName, fileInfo.Name);
+        _romWatcher.EnableRaisingEvents = true;
+        _romWatcher.Changed += async (s, e) =>
         {
             if (Watcher_DebounceChanged(e))
             {
@@ -165,7 +165,7 @@ internal class BuildJob
         // run post copy tasks on output rom
         if (_options.InsertUberAsm)
         {
-            var success = await InsertUberAsm(_options.IsVerbose);
+            var success = await InsertUberAsm();
             if (!success) Environment.Exit(1);
         }
         if (_options.InsertHijacks)
@@ -210,8 +210,7 @@ internal class BuildJob
     private bool Watcher_DebounceChanged(FileSystemEventArgs e)
     {
         var lastWriteTime = File.GetLastWriteTime(e.FullPath);
-        DateTime lastReadTime;
-        _lastReadTimes.TryGetValue(e.FullPath, out lastReadTime);
+        _lastReadTimes.TryGetValue(e.FullPath, out var lastReadTime);
         var diff = lastWriteTime - lastReadTime;
         if (diff.TotalMilliseconds > FILE_WATCHER_DEBOUNCE)
         {
@@ -227,7 +226,7 @@ internal class BuildJob
     #endregion
 
     #region Tools
-    private async Task<bool> InsertMusic(bool verbose)
+    private async Task<bool> InsertMusic()
     {
         if (_config.Addmusick == null) return false;
         if (string.IsNullOrEmpty(_config.Addmusick.Exe)) return false;
@@ -239,7 +238,7 @@ internal class BuildJob
         return exitCode == 0;
     }
 
-    private async Task<bool> InsertBlocks(bool verbose)
+    private async Task<bool> InsertBlocks()
     {
         if (_config.Gps == null) return false;
         if (string.IsNullOrEmpty(_config.Gps.Exe) || string.IsNullOrEmpty(_config.Gps.ListFile)) return false;
@@ -291,7 +290,7 @@ internal class BuildJob
         }
     }
 
-    private async Task<bool> InsertUberAsm(bool verbose)
+    private async Task<bool> InsertUberAsm()
     {
         if (_config.Uberasm == null) return false;
         if (string.IsNullOrEmpty(_config.Uberasm.Exe) || string.IsNullOrEmpty(_config.Uberasm.ListFile)) return false;
@@ -333,7 +332,7 @@ internal class BuildJob
         return true;
     }
 
-    private string[] ReadAllLines(string path)
+    private static string[] ReadAllLines(string path)
     {
         // allow read/write in other filestreams, which is not the case with System.IO.File.ReadAllLines
         using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
@@ -406,7 +405,7 @@ internal class BuildJob
         return p.ExitCode;
     }
 
-    private Process CreateProcess(string exe, string args, bool redirectSti)
+    private static Process CreateProcess(string exe, string args, bool redirectSti)
     {
         var p = new Process();
         p.StartInfo.UseShellExecute = false;
@@ -419,13 +418,13 @@ internal class BuildJob
 
     private void EnableRomWatcherEvents(bool enable)
     {
-        if (romWatcher == null) return;
-        romWatcher.EnableRaisingEvents = enable;
+        if (_romWatcher == null) return;
+        _romWatcher.EnableRaisingEvents = enable;
     }
     #endregion
 
     #region Messages
-    private void WriteCommand(string exe, string args)
+    private static void WriteCommand(string exe, string args)
     {
         Console.WriteLine("Running command:");
         Console.ForegroundColor = ConsoleColor.Cyan;
@@ -433,7 +432,7 @@ internal class BuildJob
         Console.ForegroundColor = ConsoleColor.DarkGray;
     }
 
-    private void WriteWatchingMessage()
+    private static void WriteWatchingMessage()
     {
         Console.WriteLine("Watching for changes...");
         Console.WriteLine("Press enter to exit.");
