@@ -12,23 +12,19 @@
   },
   "gps": {
     "exe": "tools\\gps\\gps.exe",
-    "args": "",
-    "listFile": "..\\..\\_list_gps.txt"
+    "args": "-l ..\\..\\_list_gps.txt"
   },
   "pixi": {
     "exe": "tools\\pixi\\pixi.exe",
-    "args": "",
-    "listFile": "_list_pixi.txt"
+    "args": "-d -l _list_pixi.txt"
   },
   "uberasm": {
-    "exe": "tools\\uberasm\\uberasmtool.exe",
-    "args": "",
-    "listFile": "..\\..\\_list_uberasm.txt"
+    "exe": "tools\\uberasm\\UberASMTool.exe",
+    "args": "..\\..\\_list_uberasm.txt"
   },
   "asar": {
     "exe": "tools\\asar\\asar.exe",
-    "args": "--pause-mode=on-warning",
-    "listFile": "..\\..\\_list_asar.txt"
+    "args": "--pause-mode=on-warning --verbose patches\\list.asm"
   },
   "flips": {
     "exe": "tools\\flips\\flips.exe",

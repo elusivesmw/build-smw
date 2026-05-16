@@ -14,7 +14,7 @@ internal class BuildJob
     private readonly Config _config;
     private readonly Options _options;
 
-    private readonly Dictionary<string, DateTime> _lastReadTimes = []; 
+    private readonly Dictionary<string, DateTime> _lastReadTimes = [];
     const int FILE_WATCHER_DEBOUNCE = 500;
 
     private FileSystemWatcher? _romWatcher;
@@ -232,7 +232,7 @@ internal class BuildJob
         if (string.IsNullOrEmpty(_config.Addmusick.Exe)) return false;
 
         string exe = Path.Combine(_config.ProjectPath, _config.Addmusick.Exe);
-        string args = _config.Addmusick.Args + $" {_config.AbsInputRom}";
+        string args = $"{_config.Addmusick.Args} {_config.AbsInputRom}";
 
         int exitCode = await RunExeAsync(exe, args);
         return exitCode == 0;
@@ -241,10 +241,10 @@ internal class BuildJob
     private async Task<bool> InsertBlocks()
     {
         if (_config.Gps == null) return false;
-        if (string.IsNullOrEmpty(_config.Gps.Exe) || string.IsNullOrEmpty(_config.Gps.ListFile)) return false;
+        if (string.IsNullOrEmpty(_config.Gps.Exe)) return false;
 
         string exe = Path.Combine(_config.ProjectPath, _config.Gps.Exe);
-        string args = _config.Gps.Args + $" -l {_config.Gps.ListFile} {_config.AbsInputRom}";
+        string args = $"{_config.Gps.Args} {_config.AbsInputRom}";
 
         int exitCode = await RunExeAsync(exe, args);
         return exitCode == 0;
@@ -253,10 +253,10 @@ internal class BuildJob
     private async Task<bool> InsertSprites(bool verbose)
     {
         if (_config.Pixi == null) return false;
-        if (string.IsNullOrEmpty(_config.Pixi.Exe) || string.IsNullOrEmpty(_config.Pixi.ListFile)) return false;
+        if (string.IsNullOrEmpty(_config.Pixi.Exe)) return false;
 
         string exe = Path.Combine(_config.ProjectPath, _config.Pixi.Exe);
-        string args = _config.Pixi.Args + (verbose ? " -d" : "") + $" -l {_config.Pixi.ListFile} {_config.AbsInputRom}";
+        string args = $"{_config.Pixi.Args} {_config.AbsInputRom}";
 
         int exitCode = await RunExeAsync(exe, args);
         return exitCode == 0;
@@ -269,7 +269,7 @@ internal class BuildJob
 
         string exe = Path.Combine(_config.ProjectPath, _config.Flips.Exe);
         string smwOrig = Path.Combine(_config.ProjectPath, "sysLMRestore", "smwOrig.smc");
-        string args = _config.Flips.Args + $" --create {smwOrig} {_config.AbsInputRom} levels_diff.bps";
+        string args = $"{_config.Flips.Args} --create {smwOrig} {_config.AbsInputRom} levels_diff.bps";
 
         int exitCode = await RunExeAsync(exe, args);
         return exitCode == 0;
@@ -293,10 +293,10 @@ internal class BuildJob
     private async Task<bool> InsertUberAsm()
     {
         if (_config.Uberasm == null) return false;
-        if (string.IsNullOrEmpty(_config.Uberasm.Exe) || string.IsNullOrEmpty(_config.Uberasm.ListFile)) return false;
+        if (string.IsNullOrEmpty(_config.Uberasm.Exe)) return false;
 
         string exe = Path.Combine(_config.ProjectPath, _config.Uberasm.Exe);
-        string args = _config.Uberasm.Args + $" {_config.Uberasm.ListFile} {_config.AbsOutputRom}";
+        string args = $"{_config.Uberasm.Args} {_config.AbsOutputRom}";
 
         int exitCode = await RunExeAsync(exe, args, true);
         return exitCode == 0;
@@ -305,31 +305,17 @@ internal class BuildJob
     private async Task<bool> InsertHijacks(bool verbose)
     {
         if (_config.Asar == null) return false;
-        if (string.IsNullOrEmpty(_config.Asar.Exe) || string.IsNullOrEmpty(_config.Asar.ListFile)) return false;
+        // NOTE: args needed for asar, no implied list file
+        if (string.IsNullOrEmpty(_config.Asar.Exe) || string.IsNullOrEmpty(_config.Asar.Args)) return false;
 
         string exe = Path.Combine(_config.ProjectPath, _config.Asar.Exe);
-        string args = _config.Asar.Args;
-        args += (verbose ? " --verbose" : "");
-
         string? exeDir = Path.GetDirectoryName(exe);
         if (exeDir == null) return false;
 
-        var list = Path.Combine(exeDir, _config.Asar.ListFile);
-        var patches = ReadAllLines(list);
+        string cmd = $"{_config.Asar.Args} {_config.AbsOutputRom}";
 
-        foreach (var patch in patches)
-        {
-            if (string.IsNullOrWhiteSpace(patch)) continue;
-
-            string asmPath = Path.Combine(exeDir, patch);
-            // run patch inserts on copied rom only (output rom)
-            string cmd = $"{args} {asmPath} {_config.AbsOutputRom}";
-
-            var exitCode = await RunExeAsync(exe, cmd);
-            if (exitCode != 0) return false;
-        }
-
-        return true;
+        var exitCode = await RunExeAsync(exe, cmd);
+        return exitCode != 0;
     }
 
     private static string[] ReadAllLines(string path)
