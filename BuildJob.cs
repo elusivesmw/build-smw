@@ -30,10 +30,26 @@ internal class BuildJob
         // insert and exit if not watching
         if (!_options.WatchForChanges)
         {
-            if (_options.InsertMusic) await InsertMusic(_options.IsVerbose);
-            if (_options.InsertSprites) await InsertSprites(_options.IsVerbose);
-            if (_options.InsertBlocks) await InsertBlocks(_options.IsVerbose);
-            if (_options.CreatePatch) await CreatePatch();
+            if (_options.InsertMusic)
+            {
+                var success = await InsertMusic(_options.IsVerbose);
+                if (!success) Environment.Exit(1);
+            }
+            if (_options.InsertSprites)
+            {
+                var success = await InsertSprites(_options.IsVerbose);
+                if (!success) Environment.Exit(1);
+            }
+            if (_options.InsertBlocks)
+            {
+                var success = await InsertBlocks(_options.IsVerbose);
+                if (!success) Environment.Exit(1);
+            }
+            if (_options.CreatePatch)
+            {
+                var success = await CreatePatch();
+                if (!success) Environment.Exit(1);
+            }
             await CopyHijackRun();
             return;
         }
@@ -49,6 +65,12 @@ internal class BuildJob
         WriteWatchingMessage();
         Console.ReadLine();
     }
+
+    //async Task AssertSuccess(Func<Task<bool>> f)
+    //{
+    //    var success = await f.Invoke();
+    //    if (!success) Environment.Exit(1);
+    //}
 
     #region Watchers
     private void InitAddmusickWatcher()
@@ -138,11 +160,23 @@ internal class BuildJob
 
     private async Task CopyHijackRun()
     {
-        CopyRom();
+        var copySuccess = CopyRom();
+        if (!copySuccess) Environment.Exit(1);
         // run post copy tasks on output rom
-        if (_options.InsertUberAsm) await InsertUberAsm(_options.IsVerbose);
-        if (_options.InsertHijacks) await InsertHijacks(true);
-        if (_options.RunEmulator) RunEmulator();
+        if (_options.InsertUberAsm)
+        {
+            var success = await InsertUberAsm(_options.IsVerbose);
+            if (!success) Environment.Exit(1);
+        }
+        if (_options.InsertHijacks)
+        {
+            var success = await InsertHijacks(true);
+            if (!success) Environment.Exit(1);
+        }
+        if (_options.RunEmulator)
+        {
+            RunEmulator();
+        }
         WriteTime();
         WriteWatchingMessage();
     }
@@ -193,73 +227,93 @@ internal class BuildJob
     #endregion
 
     #region Tools
-    private async Task InsertMusic(bool verbose)
+    private async Task<bool> InsertMusic(bool verbose)
     {
-        if (_config.Addmusick == null) return;
-        if (string.IsNullOrEmpty(_config.Addmusick.Exe)) return;
+        if (_config.Addmusick == null) return false;
+        if (string.IsNullOrEmpty(_config.Addmusick.Exe)) return false;
 
         string exe = Path.Combine(_config.ProjectPath, _config.Addmusick.Exe);
         string args = _config.Addmusick.Args + $" {_config.AbsInputRom}";
-        await RunExeAsync(exe, args);
+
+        int exitCode = await RunExeAsync(exe, args);
+        return exitCode == 0;
     }
 
-    private async Task InsertBlocks(bool verbose)
+    private async Task<bool> InsertBlocks(bool verbose)
     {
-        if (_config.Gps == null) return;
-        if (string.IsNullOrEmpty(_config.Gps.Exe) || string.IsNullOrEmpty(_config.Gps.ListFile)) return;
+        if (_config.Gps == null) return false;
+        if (string.IsNullOrEmpty(_config.Gps.Exe) || string.IsNullOrEmpty(_config.Gps.ListFile)) return false;
 
         string exe = Path.Combine(_config.ProjectPath, _config.Gps.Exe);
         string args = _config.Gps.Args + $" -l {_config.Gps.ListFile} {_config.AbsInputRom}";
-        await RunExeAsync(exe, args);
+
+        int exitCode = await RunExeAsync(exe, args);
+        return exitCode == 0;
     }
 
-    private async Task InsertSprites(bool verbose)
+    private async Task<bool> InsertSprites(bool verbose)
     {
-        if (_config.Pixi == null) return;
-        if (string.IsNullOrEmpty(_config.Pixi.Exe) || string.IsNullOrEmpty(_config.Pixi.ListFile)) return;
+        if (_config.Pixi == null) return false;
+        if (string.IsNullOrEmpty(_config.Pixi.Exe) || string.IsNullOrEmpty(_config.Pixi.ListFile)) return false;
 
         string exe = Path.Combine(_config.ProjectPath, _config.Pixi.Exe);
         string args = _config.Pixi.Args + (verbose ? " -d" : "") + $" -l {_config.Pixi.ListFile} {_config.AbsInputRom}";
-        await RunExeAsync(exe, args);
+
+        int exitCode = await RunExeAsync(exe, args);
+        return exitCode == 0;
     }
 
-    private async Task CreatePatch()
+    private async Task<bool> CreatePatch()
     {
-        if (_config.Flips == null) return;
-        if (string.IsNullOrEmpty(_config.Flips.Exe)) return;
+        if (_config.Flips == null) return false;
+        if (string.IsNullOrEmpty(_config.Flips.Exe)) return false;
 
         string exe = Path.Combine(_config.ProjectPath, _config.Flips.Exe);
-        string args = _config.Flips.Args + $" --create sysLMRestore\\smwOrig.smc {_config.AbsInputRom} levels_diff.bps";
-        await RunExeAsync(exe, args);
+        string smwOrig = Path.Combine(_config.ProjectPath, "sysLMRestore", "smwOrig.smc");
+        string args = _config.Flips.Args + $" --create {smwOrig} {_config.AbsInputRom} levels_diff.bps";
+
+        int exitCode = await RunExeAsync(exe, args);
+        return exitCode == 0;
     }
 
-    private void CopyRom()
+    private bool CopyRom()
     {
-        File.Copy(_config.AbsInputRom, _config.AbsOutputRom, true);
-        Console.WriteLine($"Copied from {_config.InputRom} to {_config.OutputRom}");
+        try
+        {
+            File.Copy(_config.AbsInputRom, _config.AbsOutputRom, true);
+            Console.WriteLine($"Copied from {_config.InputRom} to {_config.OutputRom}\n");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+            return false;
+        }
     }
 
-    private async Task InsertUberAsm(bool verbose)
+    private async Task<bool> InsertUberAsm(bool verbose)
     {
-        if (_config.Uberasm == null) return;
-        if (string.IsNullOrEmpty(_config.Uberasm.Exe) || string.IsNullOrEmpty(_config.Uberasm.ListFile)) return;
+        if (_config.Uberasm == null) return false;
+        if (string.IsNullOrEmpty(_config.Uberasm.Exe) || string.IsNullOrEmpty(_config.Uberasm.ListFile)) return false;
 
         string exe = Path.Combine(_config.ProjectPath, _config.Uberasm.Exe);
         string args = _config.Uberasm.Args + $" {_config.Uberasm.ListFile} {_config.AbsOutputRom}";
-        await RunExeAsync(exe, args, true);
+
+        int exitCode = await RunExeAsync(exe, args, true);
+        return exitCode == 0;
     }
 
-    private async Task InsertHijacks(bool verbose)
+    private async Task<bool> InsertHijacks(bool verbose)
     {
-        if (_config.Asar == null) return;
-        if (string.IsNullOrEmpty(_config.Asar.Exe) || string.IsNullOrEmpty(_config.Asar.ListFile)) return;
+        if (_config.Asar == null) return false;
+        if (string.IsNullOrEmpty(_config.Asar.Exe) || string.IsNullOrEmpty(_config.Asar.ListFile)) return false;
 
         string exe = Path.Combine(_config.ProjectPath, _config.Asar.Exe);
         string args = _config.Asar.Args;
         args += (verbose ? " --verbose" : "");
 
         string? exeDir = Path.GetDirectoryName(exe);
-        if (exeDir == null) return;
+        if (exeDir == null) return false;
 
         var list = Path.Combine(exeDir, _config.Asar.ListFile);
         var patches = ReadAllLines(list);
@@ -271,26 +325,29 @@ internal class BuildJob
             string asmPath = Path.Combine(exeDir, patch);
             // run patch inserts on copied rom only (output rom)
             string cmd = $"{args} {asmPath} {_config.AbsOutputRom}";
-            await RunExeAsync(exe, cmd);
+
+            var exitCode = await RunExeAsync(exe, cmd);
+            if (exitCode != 0) return false;
         }
+
+        return true;
     }
 
     private string[] ReadAllLines(string path)
     {
         // allow read/write in other filestreams, which is not the case with System.IO.File.ReadAllLines
-        using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-        using (var sr = new StreamReader(fs))
-        {
-            var lines = new List<string>();
-            while (!sr.EndOfStream)
-            {
-                string? line = sr.ReadLine();
-                if (line == null) continue;
+        using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var sr = new StreamReader(fs);
 
-                lines.Add(line);
-            }
-            return lines.ToArray();
+        var lines = new List<string>();
+        while (!sr.EndOfStream)
+        {
+            string? line = sr.ReadLine();
+            if (line == null) continue;
+
+            lines.Add(line);
         }
+        return lines.ToArray();
     }
 
     private void RunEmulator()
@@ -318,7 +375,7 @@ internal class BuildJob
         EnableRomWatcherEvents(true);
     }
 
-    private async Task RunExeAsync(string exe, string args, bool sendEnter = false)
+    private async Task<int> RunExeAsync(string exe, string args, bool sendEnter = false)
     {
         // stop watching the rom we are about to modify
         EnableRomWatcherEvents(false);
@@ -332,18 +389,21 @@ internal class BuildJob
 
         if (sendEnter)
         {
-            using var sw = p.StandardInput;
-            if (!sw.BaseStream.CanWrite) return;
+            if (!p.HasExited && p.StandardInput.BaseStream.CanWrite)
             {
-                // send enter to continue
-                sw.WriteLine();
-                // and add some space
-                Console.WriteLine();
+                // "Press any key to continue..."
+                p.StandardInput.WriteLine();
             }
+            // extra newline needed here
+            Console.WriteLine();
         }
+        // spacing between processes 
+        Console.WriteLine();
 
         // start watching the rom again
         EnableRomWatcherEvents(true);
+
+        return p.ExitCode;
     }
 
     private Process CreateProcess(string exe, string args, bool redirectSti)
