@@ -269,7 +269,7 @@ internal class BuildJob
 
         string exe = Path.Combine(_config.ProjectPath, _config.Flips.Exe);
         string smwOrig = Path.Combine(_config.ProjectPath, "sysLMRestore", "smwOrig.smc");
-        string args = $"{_config.Flips.Args} --create {smwOrig} {_config.AbsInputRom} levels_diff.bps";
+        string args = $"--create {smwOrig} {_config.AbsInputRom} levels_diff.bps";
 
         int exitCode = await RunExeAsync(exe, args);
         return exitCode == 0;
@@ -298,7 +298,7 @@ internal class BuildJob
         string exe = Path.Combine(_config.ProjectPath, _config.Uberasm.Exe);
         string args = $"{_config.Uberasm.Args} {_config.AbsOutputRom}";
 
-        int exitCode = await RunExeAsync(exe, args, true);
+        int exitCode = await RunExeAsync(exe, args);
         return exitCode == 0;
     }
 
@@ -315,24 +315,7 @@ internal class BuildJob
         string cmd = $"{_config.Asar.Args} {_config.AbsOutputRom}";
 
         var exitCode = await RunExeAsync(exe, cmd);
-        return exitCode != 0;
-    }
-
-    private static string[] ReadAllLines(string path)
-    {
-        // allow read/write in other filestreams, which is not the case with System.IO.File.ReadAllLines
-        using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-        using var sr = new StreamReader(fs);
-
-        var lines = new List<string>();
-        while (!sr.EndOfStream)
-        {
-            string? line = sr.ReadLine();
-            if (line == null) continue;
-
-            lines.Add(line);
-        }
-        return lines.ToArray();
+        return exitCode == 0;
     }
 
     private void RunEmulator()
