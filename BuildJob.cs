@@ -177,8 +177,6 @@ internal class BuildJob
         {
             RunEmulator();
         }
-        WriteTime();
-        WriteWatchingMessage();
     }
 
     private FileSystemWatcher? InitToolWatcher(ToolConfig? tool, bool exeRelative = true)

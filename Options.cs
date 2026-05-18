@@ -4,6 +4,9 @@ namespace build_smw;
 
 internal class Options
 {
+    [Option("config", HelpText = "Config file location. Defaults to 'config.json' in executable directory.")]
+    public string? ConfigFile { get; set; }
+
     [Option('m', "music", HelpText = "Insert music via Addmusick.")]
     public bool InsertMusic { get; set; } = false;
 
