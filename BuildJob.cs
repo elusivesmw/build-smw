@@ -267,7 +267,8 @@ internal class BuildJob
 
         string exe = Path.Combine(_config.ProjectPath, _config.Flips.Exe);
         string smwOrig = Path.Combine(_config.ProjectPath, "sysLMRestore", "smwOrig.smc");
-        string args = $"--create {smwOrig} {_config.AbsInputRom} levels_diff.bps";
+        string patch = Path.Combine(_config.ProjectPath, "levels_diff.bps");
+        string args = $"--create {smwOrig} {_config.AbsInputRom} {patch}";
 
         int exitCode = await RunExeAsync(exe, args);
         return exitCode == 0;
